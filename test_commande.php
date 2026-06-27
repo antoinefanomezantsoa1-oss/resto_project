@@ -1,7 +1,6 @@
 <?php
 include 'db_connect.php';
 
-// 1. Fetch menus and tables for dynamic dropdown selections
 try {
     $menuStmt = $pdo->query("SELECT idplat, nomplat FROM menu");
     $all_menus = $menuStmt->fetchAll(PDO::FETCH_ASSOC);
@@ -12,7 +11,6 @@ try {
     die("Erreur de chargement des relations : " . $e->getMessage());
 }
 
-// 2. Handle Updating an Order IN-LINE matching PDF keys
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['action']) && $_POST['action'] == 'update_inline') {
     $idcom   = $_POST['idcom'];
     $idplat  = $_POST['idplat'];
@@ -26,7 +24,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['action']) && $_POST['a
         $stmt = $pdo->prepare($query);
         $stmt->execute([$idplat, $nomcli, $typecom, $idtable, $datecom, $idcom]);
 
-        // Standard clean header redirect to avoid re-post prompt bugs
         header("Location: test_commande.php");
         exit();
     } catch (PDOException $e) {
@@ -34,7 +31,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['action']) && $_POST['a
     }
 }
 
-// 3. Fetch all current orders using double INNER JOIN - FIXED TO ORDER BY CODE SEQUENTIALLY
 try {
     $query = "SELECT c.*, m.nomplat, t.designation 
               FROM commande c 
@@ -63,7 +59,6 @@ $edit_id = $_GET['edit_id'] ?? null;
             document.body.style.animation = "none";
         }, 150); 
         
-        // Retain view scroll alignment position after modifying values inline
         const scrollPos = sessionStorage.getItem("commandeScrollPos");
         if (scrollPos) {
             window.scrollTo(0, parseInt(scrollPos));
@@ -105,7 +100,6 @@ $edit_id = $_GET['edit_id'] ?? null;
         const cancelBtn = document.getElementById("modal-cancel-btn");
         let targetUrl = "";
 
-        // Intercept all delete link button clicks
         document.querySelectorAll(".delete-link").forEach(link => {
             link.addEventListener("click", function(event) {
                 event.preventDefault(); 
@@ -114,20 +108,17 @@ $edit_id = $_GET['edit_id'] ?? null;
             });
         });
 
-        // If the user backs out, tuck it away safely
         cancelBtn.addEventListener("click", function() {
             overlay.style.display = "none";
             targetUrl = "";
         });
 
-        // If they approve, drop into the target route script natively
         confirmBtn.addEventListener("click", function() {
             if (targetUrl !== "") {
                 window.location.href = targetUrl;
             }
         });
 
-        // Hide modal if clicking outside the container dialog box
         overlay.addEventListener("click", function(event) {
             if (event.target === overlay) {
                 overlay.style.display = "none";
@@ -266,8 +257,9 @@ $edit_id = $_GET['edit_id'] ?? null;
                         <?php else: ?>
                             <tr>
                                 <td>
-                                    <a href="generate_pdf.php?id=<?php echo urlencode($com['idcom']); ?>" target="_blank" style="color: #f1c40f; font-weight: bold; text-decoration: none;" title="Cliquez pour voir la facture PDF">
-                                        <?php echo htmlspecialchars($com['idcom']); ?> 📄
+                                    <a href="generate_pdf.php?id=<?php echo urlencode($com['idcom']); ?>" target="_blank" style="color: #f1c40f; font-weight: bold; text-decoration: none; display: inline-flex; align-items: center; gap: 6px;" title="Cliquez pour voir la facture PDF">
+                                        <?php echo htmlspecialchars($com['idcom']); ?>
+                                        <img src="images/pdf.png" alt="PDF" style="width: 18px; height: 18px; vertical-align: middle;">
                                     </a>
                                 </td>
                                 <td><?php echo htmlspecialchars($com['nomcli']); ?></td>

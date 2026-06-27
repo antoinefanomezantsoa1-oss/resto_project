@@ -78,7 +78,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['action']) && $_POST['a
 <head>
     <meta charset="UTF-8">
     <title>Ajouter une Réservation</title>
-    <style>
+    <link rel="stylesheet" href="style.css">
+    <!--style>
         body { 
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
             margin: 40px; 
@@ -143,7 +144,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['action']) && $_POST['a
         .btn-cancel:hover { text-decoration: underline; }
         .error-msg { color: #e74c3c; font-weight: bold; margin-bottom: 15px; }
         .live-error { font-size: 13px; font-weight: bold; margin-top: 5px; }
-    </style>
+    </style-->
     <script>
     function checkReservationConflict() {
         const idtable = document.getElementById('idtable').value;
@@ -228,7 +229,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['action']) && $_POST['a
                 <input type="datetime-local" id="date_reservee" name="date_reservee" onchange="checkReservationConflict()" required>
             </div>
             
-            <div class="button-group">
+            <div class="form-actions">
                 <button type="submit" id="submit-btn" class="btn-submit">Enregistrer</button>
                 <a href="test_reservation.php" class="btn-cancel">Annuler</a>
             </div>

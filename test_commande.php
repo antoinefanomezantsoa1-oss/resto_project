@@ -26,7 +26,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['action']) && $_POST['a
         $stmt = $pdo->prepare($query);
         $stmt->execute([$idplat, $nomcli, $typecom, $idtable, $datecom, $idcom]);
 
-        echo "<script>window.location.href='test_commande.php';</script>";
+        // Standard clean header redirect to avoid re-post prompt bugs
+        header("Location: test_commande.php");
         exit();
     } catch (PDOException $e) {
         $errorMessage = "Erreur de modification de la commande : " . $e->getMessage();
@@ -54,49 +55,26 @@ $edit_id = $_GET['edit_id'] ?? null;
 <head>
     <meta charset="UTF-8">
     <title>Gestion des Commandes</title>
-    <style>
-        body { font-family: 'Segoe UI', sans-serif; margin: 40px; background-color: #f9f9f9; color: #333; }
-        h1, h2 { color: #2c3e50; }
-        .dashboard-container { display: flex; flex-direction: column; gap: 20px; }
-        .top-bar { margin-bottom: 10px; }
-        .btn-add-page { display: inline-block; padding: 10px 20px; background-color: #2ecc71; color: white; text-decoration: none; font-weight: bold; border-radius: 4px; font-size: 14px; }
-        table { width: 100%; border-collapse: collapse; background-color: #ffffff; box-shadow: 0 2px 5px rgba(0,0,0,0.1); border-radius: 5px; overflow: hidden; }
-        th, td { padding: 12px 15px; text-align: left; border: 1px solid #474141; }
-        th { background-color: #021b31; color: #ffffff; font-weight: 600; }
-        tbody tr { background-color: #ece7e7; }
-        tr:hover { background-color: #e2dbdb; }
-        .inline-input, .inline-select { padding: 6px 10px; border: 1px solid #cccccc; border-radius: 4px; font-size: 14px; background-color: #ffffff; color: #333; box-sizing: border-box; width: 95%; }
-        .btn-home { 
-            display: inline-block; 
-            text-decoration: none; 
-            color: #34495e; 
-            font-weight: bold; 
-            font-size: 14px; 
-            margin-bottom: 15px; 
-            transition: color 0.2s; 
+    <style>html { background-color: #19140f; }</style>
+    <link rel="stylesheet" href="style.css">
+    <script>
+    document.addEventListener("DOMContentLoaded", () => {
+        setTimeout(() => {
+            document.body.style.animation = "none";
+        }, 150); 
+        
+        // Retain view scroll alignment position after modifying values inline
+        const scrollPos = sessionStorage.getItem("commandeScrollPos");
+        if (scrollPos) {
+            window.scrollTo(0, parseInt(scrollPos));
+            sessionStorage.removeItem("commandeScrollPos");
         }
-        .btn-home:hover { color: #6707b6; }
-        .btn-save { color: #2ecc71; background: none; border: none; font-weight: bold; font-size: 14px; cursor: pointer; }
-        .btn-edit { color: #3498db; text-decoration: none; font-weight: bold; }
-        .btn-delete, .btn-cancel { color: #e74c3c; text-decoration: none; font-weight: bold; margin-left: 15px; }
-        .btn-cancel { color: #7f8c8d; }
-        .delete-link {
-        display: inline-block;
-        padding: 6px 14px;
-        background-color: #e74c3c; /* Red color matching your cancel choices */
-        color: white !important; /* Forces the text to stay white instead of blue */
-        text-decoration: none; /* Removes the ugly default underline */
-        border-radius: 4px;
-        font-weight: bold;
-        font-size: 14px;
-        transition: background-color 0.2s ease;
-        }
-        .delete-link:hover {
-            background-color: #c0392b; /* Darker red on hover */
-            text-decoration: none; /* Keeps underline gone during hover */
-        }
-        .error-msg { color: #e74c3c; font-weight: bold; margin-bottom: 15px; }
-    </style>
+    });
+
+    window.addEventListener("beforeunload", () => {
+        sessionStorage.setItem("commandeScrollPos", window.scrollY);
+    });
+    </script>
     <script>
     function toggleTableSelectionInline() {
         const typeSelect = document.getElementById('inline_typecom');
@@ -106,10 +84,14 @@ $edit_id = $_GET['edit_id'] ?? null;
             if (typeSelect.value === 'À emporter') {
                 tableSelect.value = '';
                 tableSelect.disabled = true;
-                tableSelect.style.backgroundColor = '#dcdad6';
+                tableSelect.removeAttribute('required');
+                tableSelect.style.backgroundColor = 'rgba(255,255,255,0.05)';
+                tableSelect.style.color = 'rgba(255,255,255,0.2)';
             } else {
                 tableSelect.disabled = false;
+                tableSelect.setAttribute('required', 'required');
                 tableSelect.style.backgroundColor = '#ffffff';
+                tableSelect.style.color = '#333333';
             }
         }
     }
@@ -126,10 +108,8 @@ $edit_id = $_GET['edit_id'] ?? null;
         // Intercept all delete link button clicks
         document.querySelectorAll(".delete-link").forEach(link => {
             link.addEventListener("click", function(event) {
-                event.preventDefault(); // Stop the page from immediately navigating away
-                targetUrl = this.href;   // Cache the PHP deletion destination path
-                
-                // Unroll the gorgeous blurred UI overlay window
+                event.preventDefault(); 
+                targetUrl = this.href;   
                 overlay.style.display = "flex";
             });
         });
@@ -147,7 +127,7 @@ $edit_id = $_GET['edit_id'] ?? null;
             }
         });
 
-        // Optional: Hide modal if clicking outside the container dialog box
+        // Hide modal if clicking outside the container dialog box
         overlay.addEventListener("click", function(event) {
             if (event.target === overlay) {
                 overlay.style.display = "none";
@@ -158,7 +138,6 @@ $edit_id = $_GET['edit_id'] ?? null;
     </script>
 </head>
 <body>
-    <a href="index.php" class="btn-home">← Retour à l'accueil</a>
     <div id="delete-modal-overlay" style="
     display: none;
     position: fixed;
@@ -166,71 +145,78 @@ $edit_id = $_GET['edit_id'] ?? null;
     left: 0;
     width: 100%;
     height: 100%;
-    background-color: rgba(0, 0, 0, 0.4);
-    backdrop-filter: blur(5px); /* Blurs the restaurant background data */
+    background-color: rgba(0, 0, 0, 0.65);
+    backdrop-filter: blur(8px); 
     z-index: 9999;
     justify-content: center;
     align-items: center;
 ">
     <div style="
-        background-color: #f7f4f4;
-        padding: 30px;
-        border-radius: 8px;
-        border: 2px solid #6707b6;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-        max-width: 400px;
+        background-color: rgba(30, 25, 20, 0.95);
+        padding: 35px;
+        border-radius: 12px;
+        border: 1px solid rgba(241, 196, 15, 0.3);
+        box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+        max-width: 420px;
         width: 90%;
         text-align: center;
         font-family: 'Segoe UI', sans-serif;
     ">
-        <h3 style="color: #2c3e50; margin-top: 0; font-size: 20px;">Confirmation</h3>
-        <p style="color: #333333; font-size: 15px; margin-bottom: 25px;">
-            Êtes-vous sûr de vouloir supprimer cet élément ?
+        <h3 style="color: #f1c40f; margin-top: 0; font-size: 22px; letter-spacing: 1px; text-transform: uppercase;">Confirmation</h3>
+        <p style="color: #ffffff; font-size: 15px; margin-bottom: 30px; line-height: 1.5;">
+            Êtes-vous sûr de vouloir supprimer cet élément ? Cette action est irréversible.
         </p>
         
         <div style="display: flex; justify-content: center; gap: 15px;">
             <button id="modal-confirm-btn" style="
-                padding: 10px 25px;
-                background-color: #e74c3c;
+                padding: 12px 28px;
+                background-color: #a62626;
                 color: white;
                 border: none;
-                border-radius: 4px;
+                border-radius: 30px;
                 font-weight: bold;
                 cursor: pointer;
-                font-size: 15px;
+                font-size: 13px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                box-shadow: 0 4px 15px rgba(166, 38, 38, 0.3);
             ">Oui, supprimer</button>
             
             <button id="modal-cancel-btn" style="
-                padding: 10px 25px;
-                background-color: #95a5a6;
-                color: white;
+                padding: 12px 28px;
+                background-color: transparent;
+                color: rgba(255, 255, 255, 0.6);
                 border: none;
-                border-radius: 4px;
+                border-radius: 30px;
                 font-weight: bold;
                 cursor: pointer;
-                font-size: 15px;
+                font-size: 13px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
             ">Annuler</button>
         </div>
     </div>
 </div>
+
+    <a href="index.php" class="btn-home">← Retour à l'accueil</a>
     <h1>Gestion des Commandes</h1>
     <?php if (isset($errorMessage)) echo "<p class='error-msg'>$errorMessage</p>"; ?>
 
     <div class="dashboard-container">
-        <div class="top-bar">
-            <a href="add_commande.php" class="btn-add-page">+ Ajouter une Nouvelle Commande</a>
+        <div class="action-bar">
+            <a href="add_commande.php" class="btn-ajouter">+ Ajouter une Nouvelle Commande</a>
         </div>
 
-        <table>
+        <table class="wide-table">
             <thead>
                 <tr>
                     <th style="width: 10%;">Code Com</th>
                     <th style="width: 15%;">Client</th>
-                    <th style="width: 20%;">Plat</th>
-                    <th style="width: 10%;">Type</th>
-                    <th style="width: 15%;">Table</th>
-                    <th style="width: 15%;">Date Commande</th>
-                    <th style="width: 10%;">Actions</th>
+                    <th style="width: 18%;">Plat</th>
+                    <th style="width: 12%;">Type</th>
+                    <th style="width: 12%;">Table</th>
+                    <th style="width: 13%;">Date Commande</th>
+                    <th style="width: 20%;">Actions</th>
                 </tr>
             </thead>
             <tbody>
@@ -259,7 +245,7 @@ $edit_id = $_GET['edit_id'] ?? null;
                                         </select>
                                     </td>
                                     <td>
-                                        <select name="idtable" id="inline_idtable" class="inline-select" required>
+                                        <select name="idtable" id="inline_idtable" class="inline-select">
                                             <option value="">-- Aucune --</option>
                                             <?php foreach ($all_tables as $tb): ?>
                                                 <option value="<?php echo htmlspecialchars($tb['idtable']); ?>" <?php if ($com['idtable'] === $tb['idtable']) echo 'selected'; ?>>
@@ -270,15 +256,17 @@ $edit_id = $_GET['edit_id'] ?? null;
                                     </td>
                                     <td><input type="date" name="datecom" class="inline-input" value="<?php echo htmlspecialchars($com['datecom']); ?>" required></td>
                                     <td>
-                                        <button type="submit" class="btn-save">Enregistrer</button>
-                                        <a href="test_commande.php" class="btn-cancel">Annuler</a>
+                                        <div class="row-actions-edit" style="display: flex; align-items: center; gap: 12px; white-space: nowrap;">
+                                            <button type="submit" class="btn-save">Enregistrer</button>
+                                            <a href="test_commande.php" class="btn-cancel">Annuler</a>
+                                        </div>
                                     </td>
                                 </tr>
                             </form>
                         <?php else: ?>
                             <tr>
                                 <td>
-                                    <a href="generate_pdf.php?id=<?php echo urlencode($com['idcom']); ?>" target="_blank" style="color: #6707b6; font-weight: bold; text-decoration: none;" title="Cliquez pour voir la facture PDF">
+                                    <a href="generate_pdf.php?id=<?php echo urlencode($com['idcom']); ?>" target="_blank" style="color: #f1c40f; font-weight: bold; text-decoration: none;" title="Cliquez pour voir la facture PDF">
                                         <?php echo htmlspecialchars($com['idcom']); ?> 📄
                                     </a>
                                 </td>
@@ -288,8 +276,13 @@ $edit_id = $_GET['edit_id'] ?? null;
                                 <td><?php echo htmlspecialchars($com['designation'] ?? 'N/A'); ?></td>
                                 <td><?php echo htmlspecialchars($com['datecom']); ?></td>
                                 <td>
-                                    <a href="test_commande.php?edit_id=<?php echo urlencode($com['idcom']); ?>" class="btn-edit">Modifier</a><br>
-                                    <a href="delete_commande.php?idcom=<?php echo urlencode($com['idcom']); ?>" class="delete-link">Supprimer</a>                                </td>
+                                    <div class="row-actions-view">
+                                        <a href="test_commande.php?edit_id=<?php echo urlencode($com['idcom']); ?>" class="btn-edit">Modifier</a>
+                                        <a href="delete_commande.php?idcom=<?php echo urlencode($com['idcom']); ?>" class="delete-link">
+                                            <img src="images/trash.png" alt="Supprimer" style="width: 20px !important; height: 20px !important; display: inline-block; vertical-align: middle;">
+                                        </a>
+                                    </div>                                 
+                                </td>
                             </tr>
                         <?php endif; ?>
                     <?php endforeach; ?>

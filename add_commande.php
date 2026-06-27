@@ -96,7 +96,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['action']) && $_POST['a
 <head>
     <meta charset="UTF-8">
     <title>Ajouter une Commande</title>
-    <style>
+    <!--style>
         body { font-family: 'Segoe UI', sans-serif; margin: 40px; background-color: #f9f9f9; color: #333; max-width: 500px; }
         h1 { color: #2c3e50; margin-top: 15px; }
         .btn-home { display: inline-block; text-decoration: none; color: #34495e; font-weight: bold; font-size: 14px; margin-bottom: 10px; transition: color 0.2s; }
@@ -110,7 +110,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['action']) && $_POST['a
         .btn-cancel { color: #e74c3c; text-decoration: none; font-weight: bold; margin-left: 20px; }
         .live-error { font-size: 13px; font-weight: bold; margin-top: 5px; }
         .occupied-option { color: #7f8c8d; background-color: #dcdad6; }
-    </style>
+    </style-->
+    <link rel="stylesheet" href="style.css">
     <script>
     function toggleTableSelectionAdd() {
         const typeCom = document.getElementById('typecom').value;
@@ -211,8 +212,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['action']) && $_POST['a
                 <label for="datecom">Date :</label>
                 <input type="date" id="datecom" name="datecom" required>
             </div>
+            <div class="form-actions">
             <button type="submit" id="submit-btn" class="btn-submit">Enregistrer</button>
             <a href="test_commande.php" class="btn-cancel">Annuler</a>
+            </div>
+
         </form>
     </div>
 

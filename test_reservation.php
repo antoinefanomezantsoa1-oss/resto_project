@@ -62,36 +62,26 @@ $edit_id = $_GET['edit_id'] ?? null;
 <head>
     <meta charset="UTF-8">
     <title>Gestion des Réservations</title>
-    <style>
-        body { font-family: 'Segoe UI', sans-serif; margin: 40px; background-color: #f9f9f9; color: #333; }
-        h1, h2 { color: #2c3e50; }
-        .dashboard-container { display: flex; flex-direction: column; gap: 20px; }
-        .top-bar { margin-bottom: 10px; }
-        .btn-add-page { display: inline-block; padding: 10px 20px; background-color: #2ecc71; color: white; text-decoration: none; font-weight: bold; border-radius: 4px; font-size: 14px; }
-        .btn-add-page:hover { background-color: #27ae60; }
-        table { width: 100%; border-collapse: collapse; background-color: #ffffff; box-shadow: 0 2px 5px rgba(0,0,0,0.1); border-radius: 5px; overflow: hidden; }
-        th, td { padding: 12px 15px; text-align: left; border: 1px solid #474141; }
-        th { background-color: #021b31; color: #ffffff; font-weight: 600; }
-        tbody tr { background-color: #ece7e7; }
-        tr:hover { background-color: #e2dbdb; }
-        .inline-input, .inline-select { padding: 6px 10px; border: 1px solid #cccccc; border-radius: 4px; font-size: 14px; background-color: #ffffff; color: #333; box-sizing: border-box; width: 95%; }
-        .btn-home { 
-            display: inline-block; 
-            text-decoration: none; 
-            color: #34495e; 
-            font-weight: bold; 
-            font-size: 14px; 
-            margin-bottom: 15px; 
-            transition: color 0.2s; 
+    <style>html { background-color: #19140f; }</style>
+    <link rel="stylesheet" href="style.css">
+    <script>
+    document.addEventListener("DOMContentLoaded", () => {
+        setTimeout(() => {
+            document.body.style.animation = "none";
+        }, 150); 
+        
+        // Scroll memory behavior to stay at the exact same location after editing or refreshing
+        const scrollPos = sessionStorage.getItem("tableScrollPos");
+        if (scrollPos) {
+            window.scrollTo(0, parseInt(scrollPos));
+            sessionStorage.removeItem("tableScrollPos");
         }
-        .btn-home:hover { color: #6707b6; }
-        .btn-save { color: #2ecc71; background: none; border: none; font-weight: bold; font-size: 14px; cursor: pointer; }
-        .btn-save:hover { text-decoration: underline; }
-        .btn-edit { color: #3498db; text-decoration: none; font-weight: bold; }
-        .btn-delete, .btn-cancel { color: #e74c3c; text-decoration: none; font-weight: bold; margin-left: 15px; }
-        .btn-cancel { color: #7f8c8d; }
-        .error-msg { color: #e74c3c; font-weight: bold; margin-bottom: 15px; }
-    </style>
+    });
+
+    window.addEventListener("beforeunload", () => {
+        sessionStorage.setItem("tableScrollPos", window.scrollY);
+    });
+    </script>
     <script>
     document.addEventListener("DOMContentLoaded", function() {
         const overlay = document.getElementById("delete-modal-overlay");
@@ -99,31 +89,25 @@ $edit_id = $_GET['edit_id'] ?? null;
         const cancelBtn = document.getElementById("modal-cancel-btn");
         let targetUrl = "";
 
-        // Intercept all delete link button clicks
         document.querySelectorAll(".delete-link").forEach(link => {
             link.addEventListener("click", function(event) {
-                event.preventDefault(); // Stop the page from immediately navigating away
-                targetUrl = this.href;   // Cache the PHP deletion destination path
-                
-                // Unroll the gorgeous blurred UI overlay window
+                event.preventDefault(); 
+                targetUrl = this.href;   
                 overlay.style.display = "flex";
             });
         });
 
-        // If the user backs out, tuck it away safely
         cancelBtn.addEventListener("click", function() {
             overlay.style.display = "none";
             targetUrl = "";
         });
 
-        // If they approve, drop into the target route script natively
         confirmBtn.addEventListener("click", function() {
             if (targetUrl !== "") {
                 window.location.href = targetUrl;
             }
         });
 
-        // Optional: Hide modal if clicking outside the container dialog box
         overlay.addEventListener("click", function(event) {
             if (event.target === overlay) {
                 overlay.style.display = "none";
@@ -141,49 +125,54 @@ $edit_id = $_GET['edit_id'] ?? null;
     left: 0;
     width: 100%;
     height: 100%;
-    background-color: rgba(0, 0, 0, 0.4);
-    backdrop-filter: blur(5px); /* Blurs the restaurant background data */
+    background-color: rgba(0, 0, 0, 0.65);
+    backdrop-filter: blur(8px); 
     z-index: 9999;
     justify-content: center;
     align-items: center;
 ">
     <div style="
-        background-color: #ece7e7;
-        padding: 30px;
-        border-radius: 8px;
-        border: 2px solid #6707b6;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-        max-width: 400px;
+        background-color: rgba(30, 25, 20, 0.95);
+        padding: 35px;
+        border-radius: 12px;
+        border: 1px solid rgba(241, 196, 15, 0.3);
+        box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+        max-width: 420px;
         width: 90%;
         text-align: center;
         font-family: 'Segoe UI', sans-serif;
     ">
-        <h3 style="color: #2c3e50; margin-top: 0; font-size: 20px;">Confirmation</h3>
-        <p style="color: #333333; font-size: 15px; margin-bottom: 25px;">
-            Êtes-vous sûr de vouloir supprimer cet élément ?
+        <h3 style="color: #f1c40f; margin-top: 0; font-size: 22px; letter-spacing: 1px; text-transform: uppercase;">Confirmation</h3>
+        <p style="color: #ffffff; font-size: 15px; margin-bottom: 30px; line-height: 1.5;">
+            Êtes-vous sûr de vouloir supprimer cet élément ? Cette action est irréversible.
         </p>
         
         <div style="display: flex; justify-content: center; gap: 15px;">
             <button id="modal-confirm-btn" style="
-                padding: 10px 25px;
-                background-color: #e74c3c;
+                padding: 12px 28px;
+                background-color: #a62626;
                 color: white;
                 border: none;
-                border-radius: 4px;
+                border-radius: 30px;
                 font-weight: bold;
                 cursor: pointer;
-                font-size: 15px;
+                font-size: 13px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                box-shadow: 0 4px 15px rgba(166, 38, 38, 0.3);
             ">Oui, supprimer</button>
             
             <button id="modal-cancel-btn" style="
-                padding: 10px 25px;
-                background-color: #95a5a6;
-                color: white;
+                padding: 12px 28px;
+                background-color: transparent;
+                color: rgba(255, 255, 255, 0.6);
                 border: none;
-                border-radius: 4px;
+                border-radius: 30px;
                 font-weight: bold;
                 cursor: pointer;
-                font-size: 15px;
+                font-size: 13px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
             ">Annuler</button>
         </div>
     </div>
@@ -193,19 +182,19 @@ $edit_id = $_GET['edit_id'] ?? null;
     <?php if (isset($errorMessage)) echo "<p class='error-msg'>$errorMessage</p>"; ?>
 
     <div class="dashboard-container">
-        <div class="top-bar">
-            <a href="add_reservation.php" class="btn-add-page">+ Ajouter une Nouvelle Réservation</a>
+        <div class="action-bar">
+            <a href="add_reservation.php" class="btn-ajouter">+ Ajouter une Nouvelle Réservation</a>
         </div>
 
-        <table>
+        <table class="wide-table">
             <thead>
                 <tr>
-                    <th style="width: 5%;">Code</th>
-                    <th style="width: 25%;">Nom Client</th>
-                    <th style="width: 25%;">Table Affectée</th>
-                    <th style="width: 18%;">Fait le</th>
-                    <th style="width: 17%;">Pour le</th>
-                    <th style="width: 10%;">Actions</th>
+                    <th style="width: 12%;">Code Res</th>
+                    <th style="width: 20%;">Client</th>
+                    <th style="width: 18%;">Table</th>
+                    <th style="width: 15%;">Date Réservation</th>
+                    <th style="width: 15%;">Heure</th>
+                    <th style="width: 20%;">Actions</th>
                 </tr>
             </thead>
             <tbody>
@@ -231,8 +220,10 @@ $edit_id = $_GET['edit_id'] ?? null;
                                     <td><input type="datetime-local" name="date_de_reserv" class="inline-input" value="<?php echo date('Y-m-d\TH:i', strtotime($res['date_de_reserv'])); ?>" required></td>
                                     <td><input type="datetime-local" name="date_reservee" class="inline-input" value="<?php echo date('Y-m-d\TH:i', strtotime($res['date_reservee'])); ?>" required></td>
                                     <td>
-                                        <button type="submit" class="btn-save">Enregistrer</button>
-                                        <a href="test_reservation.php" class="btn-cancel">Annuler</a>
+                                        <div class="row-actions-edit" style="display: flex; align-items: center; gap: 12px; white-space: nowrap;">
+                                            <button type="submit" class="btn-save">Enregistrer</button>
+                                            <a href="test_reservation.php" class="btn-cancel">Annuler</a>
+                                        </div>
                                     </td>
                                 </tr>
                             </form>
@@ -244,8 +235,13 @@ $edit_id = $_GET['edit_id'] ?? null;
                                 <td><?php echo htmlspecialchars($res['date_de_reserv']); ?></td>
                                 <td><?php echo htmlspecialchars($res['date_reservee']); ?></td>
                                 <td>
-                                    <a href="test_reservation.php?edit_id=<?php echo urlencode($res['idreserv']); ?>" class="btn-edit">Modifier</a>
-                                    <a href="delete_reservation.php?idreserv=<?php echo urlencode($res['idreserv']); ?>" class="delete-link">Annuler</a>                                </td>
+                                    <div class="row-actions-view">
+                                        <a href="test_reservation.php?edit_id=<?php echo urlencode($res['idreserv']); ?>" class="btn-edit">Modifier</a>
+                                        <a href="delete_reservation.php?idreserv=<?php echo urlencode($res['idreserv']); ?>" class="delete-link">
+                                            <img src="images/trash.png" alt="Supprimer" style="width: 20px !important; height: 20px !important; display: inline-block; vertical-align: middle;">
+                                        </a>  
+                                    </div>
+                                </td>
                             </tr>
                         <?php endif; ?>
 

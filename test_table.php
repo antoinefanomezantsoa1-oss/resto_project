@@ -38,91 +38,26 @@ $edit_id = $_GET['edit_id'] ?? null;
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gestion des Tables</title>
-    <style>
-        body { 
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-            margin: 40px; 
-            background-color: #f9f9f9; 
-            color: #333333; 
-        }
-        h1, h2 { color: #2c3e50; }
-        .dashboard-container { display: flex; flex-direction: column; gap: 20px; }
+    <style>html { background-color: #19140f; }</style>
+    <link rel="stylesheet" href="style.css">
+    <script>
+    document.addEventListener("DOMContentLoaded", () => {
+        setTimeout(() => {
+            document.body.style.animation = "none";
+        }, 150); 
         
-        .top-bar {
-            display: block;
-            margin-bottom: 10px;
+        // 2. Scroll memory behavior to stay at the exact same location after editing or refreshing
+        const scrollPos = sessionStorage.getItem("tableScrollPos");
+        if (scrollPos) {
+            window.scrollTo(0, parseInt(scrollPos));
+            sessionStorage.removeItem("tableScrollPos");
         }
+    });
 
-        /* Pretty green button to go to another page for addition */
-        .btn-add-page {
-            display: inline-block;
-            padding: 10px 20px;
-            background-color: #2ecc71;
-            color: white;
-            text-decoration: none;
-            font-weight: bold;
-            border-radius: 4px;
-            font-size: 14px;
-        }
-        .btn-add-page:hover { background-color: #27ae60; }
-
-        table { 
-            width: 100%; 
-            border-collapse: collapse; 
-            background-color: #ffffff; 
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1); 
-            border-radius: 5px; 
-            overflow: hidden; 
-        }
-        th, td { 
-            padding: 12px 15px; 
-            text-align: left; 
-            border: 1px solid #474141; 
-        }
-        th { 
-            background-color: #021b31; 
-            color: #ffffff; 
-            font-weight: 600; 
-        }
-        tbody tr { background-color: #ece7e7; }
-        tr:hover { background-color: #e2dbdb; }
-
-        /* Inline Form Inputs layout styling */
-        .inline-input {
-            padding: 6px 10px;
-            border: 1px solid #cccccc;
-            border-radius: 4px;
-            font-size: 14px;
-            background-color: #ffffff;
-            color: #333333;
-            width: 90%;
-            box-sizing: border-box;
-        }
-        .inline-select {
-            padding: 6px 10px;
-            border: 1px solid #cccccc;
-            border-radius: 4px;
-            font-size: 14px;
-            background-color: #ffffff;
-            color: #333333;
-        }
-        .btn-home { 
-            display: inline-block; 
-            text-decoration: none; 
-            color: #34495e; 
-            font-weight: bold; 
-            font-size: 14px; 
-            margin-bottom: 15px; 
-            transition: color 0.2s; 
-        }
-        .btn-home:hover { color: #6707b6; }
-        .btn-save { color: #2ecc71; background: none; border: none; font-weight: bold; font-size: 14px; cursor: pointer; padding: 0; }
-        .btn-save:hover { text-decoration: underline; }
-        .btn-edit { color: #3498db; text-decoration: none; font-weight: bold; }
-        .btn-delete { color: #e74c3c; text-decoration: none; font-weight: bold; margin-left: 15px; }
-        .btn-cancel { color: #7f8c8d; text-decoration: none; font-weight: bold; margin-left: 15px; }
-        .error-msg { color: #e74c3c; font-weight: bold; margin-bottom: 15px; }
-    </style>
+    window.addEventListener("beforeunload", () => {
+        sessionStorage.setItem("tableScrollPos", window.scrollY);
+    });
+    </script>
     <script>
     document.addEventListener("DOMContentLoaded", function() {
         const overlay = document.getElementById("delete-modal-overlay");
@@ -130,31 +65,25 @@ $edit_id = $_GET['edit_id'] ?? null;
         const cancelBtn = document.getElementById("modal-cancel-btn");
         let targetUrl = "";
 
-        // Intercept all delete link button clicks
         document.querySelectorAll(".delete-link").forEach(link => {
             link.addEventListener("click", function(event) {
-                event.preventDefault(); // Stop the page from immediately navigating away
-                targetUrl = this.href;   // Cache the PHP deletion destination path
-                
-                // Unroll the gorgeous blurred UI overlay window
+                event.preventDefault(); 
+                targetUrl = this.href;   
                 overlay.style.display = "flex";
             });
         });
 
-        // If the user backs out, tuck it away safely
         cancelBtn.addEventListener("click", function() {
             overlay.style.display = "none";
             targetUrl = "";
         });
 
-        // If they approve, drop into the target route script natively
         confirmBtn.addEventListener("click", function() {
             if (targetUrl !== "") {
                 window.location.href = targetUrl;
             }
         });
 
-        // Optional: Hide modal if clicking outside the container dialog box
         overlay.addEventListener("click", function(event) {
             if (event.target === overlay) {
                 overlay.style.display = "none";
@@ -173,49 +102,54 @@ $edit_id = $_GET['edit_id'] ?? null;
     left: 0;
     width: 100%;
     height: 100%;
-    background-color: rgba(0, 0, 0, 0.4);
-    backdrop-filter: blur(5px); /* Blurs the restaurant background data */
+    background-color: rgba(0, 0, 0, 0.65);
+    backdrop-filter: blur(8px); 
     z-index: 9999;
     justify-content: center;
     align-items: center;
 ">
     <div style="
-        background-color: #ece7e7;
-        padding: 30px;
-        border-radius: 8px;
-        border: 2px solid #6707b6;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-        max-width: 400px;
+        background-color: rgba(30, 25, 20, 0.95);
+        padding: 35px;
+        border-radius: 12px;
+        border: 1px solid rgba(241, 196, 15, 0.3);
+        box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+        max-width: 420px;
         width: 90%;
         text-align: center;
         font-family: 'Segoe UI', sans-serif;
     ">
-        <h3 style="color: #2c3e50; margin-top: 0; font-size: 20px;">Confirmation</h3>
-        <p style="color: #333333; font-size: 15px; margin-bottom: 25px;">
-            Êtes-vous sûr de vouloir supprimer cet élément ?
+        <h3 style="color: #f1c40f; margin-top: 0; font-size: 22px; letter-spacing: 1px; text-transform: uppercase;">Confirmation</h3>
+        <p style="color: #ffffff; font-size: 15px; margin-bottom: 30px; line-height: 1.5;">
+            Êtes-vous sûr de vouloir supprimer cet élément ? Cette action est irréversible.
         </p>
         
         <div style="display: flex; justify-content: center; gap: 15px;">
             <button id="modal-confirm-btn" style="
-                padding: 10px 25px;
-                background-color: #e74c3c;
+                padding: 12px 28px;
+                background-color: #a62626;
                 color: white;
                 border: none;
-                border-radius: 4px;
+                border-radius: 30px;
                 font-weight: bold;
                 cursor: pointer;
-                font-size: 15px;
+                font-size: 13px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                box-shadow: 0 4px 15px rgba(166, 38, 38, 0.3);
             ">Oui, supprimer</button>
             
             <button id="modal-cancel-btn" style="
-                padding: 10px 25px;
-                background-color: #95a5a6;
-                color: white;
+                padding: 12px 28px;
+                background-color: transparent;
+                color: rgba(255, 255, 255, 0.6);
                 border: none;
-                border-radius: 4px;
+                border-radius: 30px;
                 font-weight: bold;
                 cursor: pointer;
-                font-size: 15px;
+                font-size: 13px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
             ">Annuler</button>
         </div>
     </div>
@@ -226,8 +160,8 @@ $edit_id = $_GET['edit_id'] ?? null;
 
     <div class="dashboard-container">
         
-        <div class="top-bar">
-            <a href="add_table.php" class="btn-add-page">+ Ajouter une Nouvelle Table</a>
+        <div class="action-bar">
+            <a href="add_table.php" class="btn-ajouter">+ Ajouter une Nouvelle Table</a>
         </div>
 
         <div>
@@ -261,8 +195,10 @@ $edit_id = $_GET['edit_id'] ?? null;
                                             </select>
                                         </td>
                                         <td>
-                                            <button type="submit" class="btn-save">Enregistrer</button>
-                                            <a href="test_table.php" class="btn-cancel">Annuler</a>
+                                            <div class="row-actions-edit">
+                                                <button type="submit" class="btn-save">Enregistrer</button>
+                                                <a href="test_table.php" class="btn-cancel">Annuler</a>
+                                            </div>
                                         </td>
                                     </tr>
                                 </form>
@@ -276,8 +212,13 @@ $edit_id = $_GET['edit_id'] ?? null;
                                         </span>
                                     </td>
                                     <td>
-                                        <a href="test_table.php?edit_id=<?php echo urlencode($tb['idtable']); ?>" class="btn-edit">Modifier</a>
-                                        <a href="delete_table.php?idtable=<?php echo urlencode($tb['idtable']); ?>" class="delete-link">Supprimer</a>                                    </td>
+                                        <div class="row-actions-view">
+                                            <a href="test_table.php?edit_id=<?php echo urlencode($tb['idtable']); ?>" class="btn-edit">Modifier</a>
+                                            <a href="delete_table.php?idtable=<?php echo urlencode($tb['idtable']); ?>" class="delete-link">
+                                                <img src="images/trash.png" alt="Supprimer" style="width: 20px !important; height: 20px !important; display: inline-block; vertical-align: middle;">
+                                            </a> 
+                                        </div>                                     
+                                    </td>
                                 </tr>
                             <?php endif; ?>
 

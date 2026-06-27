@@ -44,7 +44,7 @@ try {
 <head>
     <meta charset="UTF-8">
     <title>Suivi des Clients par Date</title>
-    <style>
+    <!--style>
         body { font-family: 'Segoe UI', sans-serif; margin: 40px; background-color: #f9f9f9; color: #333; }
         h1, h2 { color: #2c3e50; }
         .back-link { display: inline-block; margin-bottom: 20px; text-decoration: none; color: #7f8c8d; font-weight: bold; }
@@ -63,7 +63,7 @@ try {
         tbody tr { background-color: #ece7e7; }
         tr:hover { background-color: #e2dbdb; }
         .empty-msg { text-align: center; font-weight: bold; padding: 20px; color: #7f8c8d; }
-    </style>
+    </style-->
     <script>
         function toggleFilterInputs() {
             const isSingle = document.getElementById('mode_single').checked;
@@ -71,6 +71,7 @@ try {
             document.getElementById('wrapper_range').style.display = isSingle ? 'none' : 'flex';
         }
     </script>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body onload="toggleFilterInputs()">
 

@@ -1,7 +1,7 @@
 <?php
     include 'db_connect.php';
-    if (isset($_GET['id'])) {
-        $idcom = $_GET['id'];
+    if (isset($_GET['idcom'])) {
+        $idcom = $_GET['idcom'];
 
         try{
             $query = "DELETE from commande WHERE idcom=?";

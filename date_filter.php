@@ -11,24 +11,24 @@ $clients = [];
 
 try {
     if ($filter_mode === 'single' && !empty($single_date)) {
-        // Mode 1: Exact Single Date Match
+        // Mode 1: Exact Single Date Match (Using DATE() to strip times)
         $query = "SELECT c.*, m.nomplat, t.designation 
                   FROM commande c 
                   INNER JOIN menu m ON c.idplat = m.idplat 
                   LEFT JOIN table_resto t ON c.idtable = t.idtable 
-                  WHERE c.datecom = ?
+                  WHERE DATE(c.datecom) = ?
                   ORDER BY c.nomcli ASC";
         $stmt = $pdo->prepare($query);
         $stmt->execute([$single_date]);
         $clients = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     } elseif ($filter_mode === 'range' && !empty($start_date) && !empty($end_date)) {
-        // Mode 2: Between Two Dates Range
+        // Mode 2: Between Two Dates Range (Using DATE() to strip times)
         $query = "SELECT c.*, m.nomplat, t.designation 
                   FROM commande c 
                   INNER JOIN menu m ON c.idplat = m.idplat 
                   LEFT JOIN table_resto t ON c.idtable = t.idtable 
-                  WHERE c.datecom BETWEEN ? AND ?
+                  WHERE DATE(c.datecom) BETWEEN ? AND ?
                   ORDER BY c.datecom ASC, c.nomcli ASC";
         $stmt = $pdo->prepare($query);
         $stmt->execute([$start_date, $end_date]);
@@ -128,9 +128,9 @@ try {
             <?php if (count($clients) > 0): ?>
                 <?php foreach ($clients as $cli): ?>
                     <tr>
-                        <td><strong><?php echo htmlspecialchars(strupper($cli['nomcli'] ?? '')); ?></strong></td>
+                        <td><strong><?php echo htmlspecialchars(strtoupper($cli['nomcli'] ?? '')); ?></strong></td>
                         <td><?php echo htmlspecialchars($cli['idcom']); ?></td>
-                        <td><?php echo htmlspecialchars($cli['nomplat']); ?></td>
+                        <td><?php echo htmlspecialchars($m_nomplat = $cli['nomplat'] ?? ''); ?></td>
                         <td><?php echo htmlspecialchars($cli['designation'] ?? 'À emporter'); ?></td>
                         <td><?php echo htmlspecialchars($cli['datecom']); ?></td>
                     </tr>

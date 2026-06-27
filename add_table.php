@@ -79,6 +79,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['action']) && $_POST['a
             font-size: 15px; 
         }
         .btn-submit:hover { background-color: #27ae60; }
+        .btn-submit:disabled { background-color: #95a5a6; cursor: not-allowed; }
         .btn-cancel {
             color: #e74c3c;
             text-decoration: none;
@@ -87,6 +88,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['action']) && $_POST['a
         }
         .btn-cancel:hover { text-decoration: underline; }
         .error-msg { color: #e74c3c; font-weight: bold; margin-bottom: 15px; }
+        .live-error { font-size: 13px; font-weight: bold; margin-top: 5px; }
     </style>
 </head>
 <body>
@@ -103,6 +105,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['action']) && $_POST['a
             <div class="form-group">
                 <label for="idtable">Numéro de Table :</label>
                 <input type="text" id="idtable" name="idtable" placeholder="Ex: T1" required>
+                <span id="idtable-error" class="live-error"></span>
             </div>
 
             <div class="form-group">
@@ -119,11 +122,42 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['action']) && $_POST['a
             </div>
             
             <div class="button-group">
-                <button type="submit" class="btn-submit">Enregistrer</button>
+                <button type="submit" id="submit-btn" class="btn-submit">Enregistrer</button>
                 <a href="test_table.php" class="btn-cancel">Annuler</a>
             </div>
         </form>
     </div>
 
+    <script>
+    document.getElementById('idtable').addEventListener('input', function() {
+        const idValue = this.value.trim();
+        const errorSpan = document.getElementById('idtable-error');
+        const submitBtn = document.getElementById('submit-btn');
+
+        if (idValue === '') {
+            errorSpan.textContent = '';
+            this.style.borderColor = '#cccccc';
+            submitBtn.disabled = false;
+            return;
+        }
+
+        fetch(`check_duplicate.php?table=table_resto&column=idtable&id=${encodeURIComponent(idValue)}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.exists) {
+                    errorSpan.textContent = "❌ Ce numéro de table existe déjà !";
+                    errorSpan.style.color = "#e74c3c";
+                    this.style.borderColor = "#e74c3c";
+                    submitBtn.disabled = true;
+                } else {
+                    errorSpan.textContent = "✅ Numéro disponible";
+                    errorSpan.style.color = "#2ecc71";
+                    this.style.borderColor = "#2ecc71";
+                    submitBtn.disabled = false;
+                }
+            })
+            .catch(err => console.error("Erreur de validation :", err));
+    });
+    </script>
 </body>
 </html>

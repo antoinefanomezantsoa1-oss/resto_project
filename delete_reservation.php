@@ -1,8 +1,8 @@
 <?php
 include 'db_connect.php';
 
-if (isset($_GET['id'])) {
-    $idreserv = $_GET['id'];
+if (isset($_GET['idreserv'])) {
+    $idreserv = $_GET['idreserv'];
 
     try {
         $query = "DELETE FROM reserver WHERE idreserv = ?";

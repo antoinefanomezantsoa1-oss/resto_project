@@ -1,8 +1,8 @@
 <?php
  include 'db_connect.php';
 
- if (isset($_GET['id'])) {
-        $idtable = $_GET['id'];
+ if (isset($_GET['idtable'])) {
+        $idtable = $_GET['idtable'];
 
         try{
             $query = "DELETE from table_resto WHERE idtable=?";

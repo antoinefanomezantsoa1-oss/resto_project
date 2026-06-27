@@ -1,8 +1,8 @@
 <?php
 include 'db_connect.php';
 
-if (isset($_GET['id'])) {
-    $idplat = $_GET['id'];
+if (isset($_GET['idplat'])) {
+    $idplat = $_GET['idplat'];
 
     try {
         $query = "DELETE FROM menu WHERE idplat = ?";

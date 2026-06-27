@@ -5,7 +5,10 @@ try {
     $menuStmt = $pdo->query("SELECT idplat, nomplat FROM menu");
     $all_menus = $menuStmt->fetchAll(PDO::FETCH_ASSOC);
 
-    $tableStmt = $pdo->query("SELECT idtable, designation FROM table_resto");
+    // Fetch all tables and check if they are currently occupied by an active order
+    $tableStmt = $pdo->query("SELECT t.idtable, t.designation, 
+                                     (SELECT COUNT(*) FROM commande c WHERE c.idtable = t.idtable) as est_occupee
+                              FROM table_resto t");
     $all_tables = $tableStmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
     die("Erreur de chargement des relations : " . $e->getMessage());
@@ -51,7 +54,23 @@ $edit_id = $_GET['edit_id'] ?? null;
 <head>
     <meta charset="UTF-8">
     <title>Gestion des Commandes</title>
-    <style>html { background-color: #19140f; }</style>
+    <style>
+        html { background-color: #19140f; }
+        
+        /* Layout fix to prevent narrow input truncation */
+        .inline-input, .inline-select {
+            width: 100%;
+            box-sizing: border-box;
+            padding: 6px;
+            font-size: 13px;
+        }
+        
+        /* Specifically force the table select element to display full text without cutting off */
+        #inline_idtable {
+            min-width: 140px !important;
+            text-overflow: clip;
+        }
+    </style>
     <link rel="stylesheet" href="style.css">
     <script>
     document.addEventListener("DOMContentLoaded", () => {
@@ -239,8 +258,20 @@ $edit_id = $_GET['edit_id'] ?? null;
                                         <select name="idtable" id="inline_idtable" class="inline-select">
                                             <option value="">-- Aucune --</option>
                                             <?php foreach ($all_tables as $tb): ?>
-                                                <option value="<?php echo htmlspecialchars($tb['idtable']); ?>" <?php if ($com['idtable'] === $tb['idtable']) echo 'selected'; ?>>
-                                                    <?php echo htmlspecialchars($tb['designation']); ?>
+                                                <?php 
+                                                    // Determine if this specific option should be un-clickable
+                                                    $is_current_seat = ($com['idtable'] === $tb['idtable']);
+                                                    $is_disabled = ($tb['est_occupee'] > 0 && !$is_current_seat);
+                                                    
+                                                    $display_name = htmlspecialchars($tb['designation']);
+                                                    if ($is_disabled) {
+                                                        $display_name .= " (Occupée)";
+                                                    }
+                                                ?>
+                                                <option value="<?php echo htmlspecialchars($tb['idtable']); ?>" 
+                                                    <?php if ($is_current_seat) echo 'selected'; ?>
+                                                    <?php if ($is_disabled) echo 'disabled style="color: #a0a0a0; background-color: #e0e0e0;"'; ?>>
+                                                    <?php echo $display_name; ?>
                                                 </option>
                                             <?php endforeach; ?>
                                         </select>

@@ -184,6 +184,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['action']) && $_POST['a
     </script>
 </head>
 <body>
+    <a href="index.php" class="btn-home">← Retour à l'accueil</a>
 
     <h1>Gestion des Réservations</h1>
     

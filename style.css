@@ -705,3 +705,11 @@ td select option:checked {
 .btn-delete-icon:hover img {
     transform: scale(1.2); /* Gives a tiny crisp pop when mouse hovers */
 }
+/* Disables standard browser autofill dropdowns globally */
+input {
+    background-clip: padding-box;
+}
+input:-webkit-autofill {
+    transition: background-color 5000s ease-in-out 0s;
+    -webkit-text-fill-color: #fff !important;
+}

@@ -98,7 +98,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['action']) && $_POST['a
     </style-->
 </head>
 <body>
-
+    <a href="index.php" class="btn-home">← Retour à l'accueil</a>
     <h1>Gestion du Menu</h1>
     
     <div class="form-card">

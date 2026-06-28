@@ -2,51 +2,19 @@
 include 'db_connect.php';
 
 try {
-    $menuStmt = $pdo->query("SELECT idplat, nomplat FROM menu");
-    $all_menus = $menuStmt->fetchAll(PDO::FETCH_ASSOC);
-
-    // Fetch all tables and check if they are currently occupied by an active order
-    $tableStmt = $pdo->query("SELECT t.idtable, t.designation, 
-                                     (SELECT COUNT(*) FROM commande c WHERE c.idtable = t.idtable) as est_occupee
-                              FROM table_resto t");
-    $all_tables = $tableStmt->fetchAll(PDO::FETCH_ASSOC);
-} catch (PDOException $e) {
-    die("Erreur de chargement des relations : " . $e->getMessage());
-}
-
-if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['action']) && $_POST['action'] == 'update_inline') {
-    $idcom   = $_POST['idcom'];
-    $idplat  = $_POST['idplat'];
-    $nomcli  = $_POST['nomcli'];
-    $typecom = $_POST['typecom'];
-    $idtable = !empty($_POST['idtable']) ? $_POST['idtable'] : null;
-    $datecom = $_POST['datecom'];
-    
-    try {
-        $query = "UPDATE commande SET idplat = ?, nomcli = ?, typecom = ?, idtable = ?, datecom = ? WHERE idcom = ?";
-        $stmt = $pdo->prepare($query);
-        $stmt->execute([$idplat, $nomcli, $typecom, $idtable, $datecom, $idcom]);
-
-        header("Location: test_commande.php");
-        exit();
-    } catch (PDOException $e) {
-        $errorMessage = "Erreur de modification de la commande : " . $e->getMessage();
-    }
-}
-
-try {
-    $query = "SELECT c.*, m.nomplat, t.designation 
+    // Fetch aggregated orders and preserve their payment status
+    $query = "SELECT c.idcom, c.nomcli, c.typecom, c.idtable, c.datecom, c.statut, t.designation,
+                     GROUP_CONCAT(CONCAT(m.nomplat, ' (x', c.qte, ')') SEPARATOR ', ') as plats_groupes
               FROM commande c 
               INNER JOIN menu m ON c.idplat = m.idplat 
               LEFT JOIN table_resto t ON c.idtable = t.idtable 
+              GROUP BY c.idcom, c.nomcli, c.typecom, c.idtable, c.datecom, c.statut, t.designation
               ORDER BY c.idcom ASC";
     $stmt = $pdo->query($query);
     $commandes = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
     die("Erreur de chargement des commandes : " . $e->getMessage());
 }
-
-$edit_id = $_GET['edit_id'] ?? null;
 ?>
 
 <!DOCTYPE html>
@@ -54,163 +22,130 @@ $edit_id = $_GET['edit_id'] ?? null;
 <head>
     <meta charset="UTF-8">
     <title>Gestion des Commandes</title>
+    <link rel="stylesheet" href="style.css">
     <style>
         html { background-color: #19140f; }
         
-        /* Layout fix to prevent narrow input truncation */
-        .inline-input, .inline-select {
-            width: 100%;
-            box-sizing: border-box;
-            padding: 6px;
+        /* Badges styling */
+        .plats-badge {
+            background-color: rgba(241, 196, 15, 0.08);
+            border-left: 3px solid #f1c40f;
+            padding: 6px 10px;
             font-size: 13px;
+            color: #e0e0e0;
+            border-radius: 0 4px 4px 0;
+            line-height: 1.4;
         }
-        
-        /* Specifically force the table select element to display full text without cutting off */
-        #inline_idtable {
-            min-width: 140px !important;
-            text-overflow: clip;
-        }
-    </style>
-    <link rel="stylesheet" href="style.css">
-    <script>
-    document.addEventListener("DOMContentLoaded", () => {
-        setTimeout(() => {
-            document.body.style.animation = "none";
-        }, 150); 
-        
-        const scrollPos = sessionStorage.getItem("commandeScrollPos");
-        if (scrollPos) {
-            window.scrollTo(0, parseInt(scrollPos));
-            sessionStorage.removeItem("commandeScrollPos");
-        }
-    });
 
-    window.addEventListener("beforeunload", () => {
-        sessionStorage.setItem("commandeScrollPos", window.scrollY);
-    });
-    </script>
-    <script>
-    function toggleTableSelectionInline() {
-        const typeSelect = document.getElementById('inline_typecom');
-        const tableSelect = document.getElementById('inline_idtable');
-        
-        if (typeSelect && tableSelect) {
-            if (typeSelect.value === 'À emporter') {
-                tableSelect.value = '';
-                tableSelect.disabled = true;
-                tableSelect.removeAttribute('required');
-                tableSelect.style.backgroundColor = 'rgba(255,255,255,0.05)';
-                tableSelect.style.color = 'rgba(255,255,255,0.2)';
-            } else {
-                tableSelect.disabled = false;
-                tableSelect.setAttribute('required', 'required');
-                tableSelect.style.backgroundColor = '#ffffff';
-                tableSelect.style.color = '#333333';
-            }
+        .status-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            font-size: 11px;
+            font-weight: bold;
+            text-transform: uppercase;
+            border-radius: 4px;
+            letter-spacing: 0.5px;
         }
+        .status-unpaid {
+            background-color: rgba(231, 76, 60, 0.15);
+            color: #e74c3c;
+            border: 1px solid rgba(231, 76, 60, 0.3);
+        }
+        .status-paid {
+            background-color: rgba(46, 204, 113, 0.15);
+            color: #2ecc71;
+            border: 1px solid rgba(46, 204, 113, 0.3);
+        }
+
+        .action-cell {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
     }
 
-    document.addEventListener("DOMContentLoaded", toggleTableSelectionInline);
-    </script>
-    <script>
-    document.addEventListener("DOMContentLoaded", function() {
-        const overlay = document.getElementById("delete-modal-overlay");
-        const confirmBtn = document.getElementById("modal-confirm-btn");
-        const cancelBtn = document.getElementById("modal-cancel-btn");
-        let targetUrl = "";
+    /* FIXED: Explicitly force text contrast with !important on hover/active states */
+    .btn-action-payer {
+        background-color: #f1c40f;
+        color: #19140f !important;
+        padding: 5px 12px;
+        font-size: 11px;
+        font-weight: bold;
+        text-transform: uppercase;
+        text-decoration: none;
+        border-radius: 4px;
+        transition: all 0.2s ease;
+        display: inline-block;
+    }
+    .btn-action-payer:hover {
+        background-color: #f39c12 !important;
+        color: #19140f !important; /* Forces text to stay dark */
+        transform: translateY(-1px);
+    }
+    </style>
+ <script>
+document.addEventListener("DOMContentLoaded", function() {
+    // FIXED: Capture the scroll position from the URL query parameter after redirecting
+    const urlParams = new URLSearchParams(window.location.search);
+    const scrollY = urlParams.get('scroll_y');
+    if (scrollY) {
+        window.scrollTo(0, parseInt(scrollY));
+    }
 
-        document.querySelectorAll(".delete-link").forEach(link => {
-            link.addEventListener("click", function(event) {
-                event.preventDefault(); 
-                targetUrl = this.href;   
-                overlay.style.display = "flex";
-            });
-        });
+    const overlay = document.getElementById("custom-modal-overlay");
+    const modalTitle = document.getElementById("modal-title");
+    const modalText = document.getElementById("modal-text");
+    const confirmBtn = document.getElementById("modal-confirm-btn");
+    const cancelBtn = document.getElementById("modal-cancel-btn");
+    let targetUrl = "";
 
-        cancelBtn.addEventListener("click", function() {
-            overlay.style.display = "none";
-            targetUrl = "";
-        });
-
-        confirmBtn.addEventListener("click", function() {
-            if (targetUrl !== "") {
-                window.location.href = targetUrl;
-            }
-        });
-
-        overlay.addEventListener("click", function(event) {
-            if (event.target === overlay) {
-                overlay.style.display = "none";
-                targetUrl = "";
-            }
+    // Handle Deletions
+    document.querySelectorAll(".delete-link").forEach(link => {
+        link.addEventListener("click", function(event) {
+            event.preventDefault(); 
+            targetUrl = this.href;   
+            modalTitle.textContent = "Suppression";
+            modalTitle.style.color = "#a62626";
+            modalText.textContent = "Êtes-vous sûr de vouloir supprimer définitivement cette commande ?";
+            confirmBtn.style.backgroundColor = "#a62626";
+            overlay.style.display = "flex";
         });
     });
-    </script>
+
+    // FIXED: Dynamically inject current scroll position into the payment link on click
+    document.querySelectorAll(".payer-link").forEach(link => {
+        link.addEventListener("click", function(event) {
+            event.preventDefault();
+            // Append current window scroll coordinates right onto the script query string
+            targetUrl = this.href + "&scroll_y=" + Math.round(window.scrollY);
+            
+            modalTitle.textContent = "Règlement Facture";
+            modalTitle.style.color = "#f1c40f";
+            modalText.textContent = "Confirmer le règlement de l'addition et libérer la table correspondante ?";
+            confirmBtn.style.backgroundColor = "#27ae60";
+            overlay.style.display = "flex";
+        });
+    });
+
+    cancelBtn.addEventListener("click", () => { overlay.style.display = "none"; });
+    confirmBtn.addEventListener("click", () => { if (targetUrl) window.location.href = targetUrl; });
+});
+</script>
 </head>
 <body>
-    <div id="delete-modal-overlay" style="
-    display: none;
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0, 0, 0, 0.65);
-    backdrop-filter: blur(8px); 
-    z-index: 9999;
-    justify-content: center;
-    align-items: center;
-">
-    <div style="
-        background-color: rgba(30, 25, 20, 0.95);
-        padding: 35px;
-        border-radius: 12px;
-        border: 1px solid rgba(241, 196, 15, 0.3);
-        box-shadow: 0 10px 30px rgba(0,0,0,0.6);
-        max-width: 420px;
-        width: 90%;
-        text-align: center;
-        font-family: 'Segoe UI', sans-serif;
-    ">
-        <h3 style="color: #f1c40f; margin-top: 0; font-size: 22px; letter-spacing: 1px; text-transform: uppercase;">Confirmation</h3>
-        <p style="color: #ffffff; font-size: 15px; margin-bottom: 30px; line-height: 1.5;">
-            Êtes-vous sûr de vouloir supprimer cet élément ? Cette action est irréversible.
-        </p>
-        
-        <div style="display: flex; justify-content: center; gap: 15px;">
-            <button id="modal-confirm-btn" style="
-                padding: 12px 28px;
-                background-color: #a62626;
-                color: white;
-                border: none;
-                border-radius: 30px;
-                font-weight: bold;
-                cursor: pointer;
-                font-size: 13px;
-                text-transform: uppercase;
-                letter-spacing: 0.5px;
-                box-shadow: 0 4px 15px rgba(166, 38, 38, 0.3);
-            ">Oui, supprimer</button>
-            
-            <button id="modal-cancel-btn" style="
-                padding: 12px 28px;
-                background-color: transparent;
-                color: rgba(255, 255, 255, 0.6);
-                border: none;
-                border-radius: 30px;
-                font-weight: bold;
-                cursor: pointer;
-                font-size: 13px;
-                text-transform: uppercase;
-                letter-spacing: 0.5px;
-            ">Annuler</button>
+    <div id="custom-modal-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.7); backdrop-filter: blur(6px); z-index: 9999; justify-content: center; align-items: center;">
+        <div style="background-color: rgba(25, 20, 15, 0.98); padding: 35px; border-radius: 8px; border: 1px solid rgba(241, 196, 15, 0.2); max-width: 400px; width: 90%; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.8);">
+            <h3 id="modal-title" style="margin-top: 0; font-size: 20px; letter-spacing: 1px; text-transform: uppercase;">Confirmation</h3>
+            <p id="modal-text" style="color: #ffffff; font-size: 14px; margin-bottom: 25px; line-height: 1.5;"></p>
+            <div style="display: flex; justify-content: center; gap: 15px;">
+                <button id="modal-confirm-btn" style="padding: 10px 24px; color: white; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; text-transform: uppercase; font-size: 12px;">Confirmer</button>
+                <button id="modal-cancel-btn" style="padding: 10px 24px; background-color: transparent; color: rgba(255, 255, 255, 0.5); border: none; cursor: pointer; text-transform: uppercase; font-size: 12px;">Annuler</button>
+            </div>
         </div>
     </div>
-</div>
 
     <a href="index.php" class="btn-home">← Retour à l'accueil</a>
     <h1>Gestion des Commandes</h1>
-    <?php if (isset($errorMessage)) echo "<p class='error-msg'>$errorMessage</p>"; ?>
 
     <div class="dashboard-container">
         <div class="action-bar">
@@ -222,95 +157,53 @@ $edit_id = $_GET['edit_id'] ?? null;
                 <tr>
                     <th style="width: 10%;">Code Com</th>
                     <th style="width: 15%;">Client</th>
-                    <th style="width: 18%;">Plat</th>
-                    <th style="width: 12%;">Type</th>
-                    <th style="width: 12%;">Table</th>
-                    <th style="width: 13%;">Date Commande</th>
-                    <th style="width: 20%;">Actions</th>
+                    <th style="width: 28%;">Plat(s) Commandé(s)</th>
+                    <th style="width: 10%;">Type</th>
+                    <th style="width: 10%;">Table</th>
+                    <th style="width: 11%;">Date</th>
+                    <th style="width: 11%;">Statut</th>
+                    <th style="width: 15%;">Actions</th>
                 </tr>
             </thead>
             <tbody>
                 <?php if (count($commandes) > 0): ?>
                     <?php foreach ($commandes as $com): ?>
-                        <?php if ($edit_id === $com['idcom']): ?>
-                            <form action="test_commande.php" method="POST">
-                                <input type="hidden" name="action" value="update_inline">
-                                <input type="hidden" name="idcom" value="<?php echo htmlspecialchars($com['idcom']); ?>">
-                                <tr>
-                                    <td><strong><?php echo htmlspecialchars($com['idcom']); ?></strong></td>
-                                    <td><input type="text" name="nomcli" class="inline-input" value="<?php echo htmlspecialchars($com['nomcli']); ?>" required></td>
-                                    <td>
-                                        <select name="idplat" class="inline-select" required>
-                                            <?php foreach ($all_menus as $mn): ?>
-                                                <option value="<?php echo htmlspecialchars($mn['idplat']); ?>" <?php if ($com['idplat'] === $mn['idplat']) echo 'selected'; ?>>
-                                                    <?php echo htmlspecialchars($mn['nomplat']); ?>
-                                                </option>
-                                            <?php endforeach; ?>
-                                        </select>
-                                    </td>
-                                    <td>
-                                        <select name="typecom" id="inline_typecom" class="inline-select" onchange="toggleTableSelectionInline()" required>
-                                            <option value="Sur table" <?php if ($com['typecom'] === 'Sur table') echo 'selected'; ?>>Sur table</option>
-                                            <option value="À emporter" <?php if ($com['typecom'] === 'À emporter') echo 'selected'; ?>>À emporter</option>
-                                        </select>
-                                    </td>
-                                    <td>
-                                        <select name="idtable" id="inline_idtable" class="inline-select">
-                                            <option value="">-- Aucune --</option>
-                                            <?php foreach ($all_tables as $tb): ?>
-                                                <?php 
-                                                    // Determine if this specific option should be un-clickable
-                                                    $is_current_seat = ($com['idtable'] === $tb['idtable']);
-                                                    $is_disabled = ($tb['est_occupee'] > 0 && !$is_current_seat);
-                                                    
-                                                    $display_name = htmlspecialchars($tb['designation']);
-                                                    if ($is_disabled) {
-                                                        $display_name .= " (Occupée)";
-                                                    }
-                                                ?>
-                                                <option value="<?php echo htmlspecialchars($tb['idtable']); ?>" 
-                                                    <?php if ($is_current_seat) echo 'selected'; ?>
-                                                    <?php if ($is_disabled) echo 'disabled style="color: #a0a0a0; background-color: #e0e0e0;"'; ?>>
-                                                    <?php echo $display_name; ?>
-                                                </option>
-                                            <?php endforeach; ?>
-                                        </select>
-                                    </td>
-                                    <td><input type="date" name="datecom" class="inline-input" value="<?php echo htmlspecialchars($com['datecom']); ?>" required></td>
-                                    <td>
-                                        <div class="row-actions-edit" style="display: flex; align-items: center; gap: 12px; white-space: nowrap;">
-                                            <button type="submit" class="btn-save">Enregistrer</button>
-                                            <a href="test_commande.php" class="btn-cancel">Annuler</a>
-                                        </div>
-                                    </td>
-                                </tr>
-                            </form>
-                        <?php else: ?>
-                            <tr>
-                                <td>
-                                    <a href="generate_pdf.php?id=<?php echo urlencode($com['idcom']); ?>" target="_blank" style="color: #f1c40f; font-weight: bold; text-decoration: none; display: inline-flex; align-items: center; gap: 6px;" title="Cliquez pour voir la facture PDF">
-                                        <?php echo htmlspecialchars($com['idcom']); ?>
-                                        <img src="images/pdf.png" alt="PDF" style="width: 18px; height: 18px; vertical-align: middle;">
+                        <tr>
+                            <td>
+                                <a href="generate_pdf.php?id=<?php echo urlencode($com['idcom']); ?>" target="_blank" style="color: #f1c40f; font-weight: bold; text-decoration: none; display: inline-flex; align-items: center; gap: 6px;">
+                                    <?php echo htmlspecialchars($com['idcom']); ?>
+                                    <img src="images/pdf.png" alt="PDF" style="width: 18px; height: 18px;">
+                                </a>
+                            </td>
+                            <td><?php echo htmlspecialchars($com['nomcli']); ?></td>
+                            <td><div class="plats-badge"><?php echo htmlspecialchars($com['plats_groupes']); ?></div></td>
+                            <td><?php echo htmlspecialchars($com['typecom']); ?></td>
+                            <td><?php echo htmlspecialchars($com['designation'] ?? 'N/A'); ?></td>
+                            <td><?php echo htmlspecialchars($com['datecom']); ?></td>
+                            <td>
+                                <span class="status-badge <?php echo ($com['statut'] === 'Payé') ? 'status-paid' : 'status-unpaid'; ?>">
+                                    <?php echo htmlspecialchars($com['statut']); ?>
+                                </span>
+                            </td>
+                            <td>
+                                <div class="action-cell">
+                                    <?php if ($com['statut'] === 'Non payé'): ?>
+                                        <a href="payer_commande.php?idcom=<?php echo urlencode($com['idcom']); ?>&idtable=<?php echo urlencode($com['idtable']); ?>" class="btn-action-payer payer-link">Payer</a>
+                                    <?php else: ?>
+                                        <span style="font-size: 11px; color: #2ecc71; font-weight: bold; text-transform: uppercase; padding: 5px 8px;">Réglé</span>
+                                    <?php endif; ?>
+
+                                    <a href="edit_commande.php?id=<?php echo urlencode($com['idcom']); ?>" class="btn-edit">Modifier</a>
+                                    
+                                    <a href="delete_commande.php?idcom=<?php echo urlencode($com['idcom']); ?>" class="delete-link">
+                                        <img src="images/trash.png" alt="Supprimer" style="width: 18px; height: 18px; vertical-align: middle;">
                                     </a>
-                                </td>
-                                <td><?php echo htmlspecialchars($com['nomcli']); ?></td>
-                                <td><?php echo htmlspecialchars($com['nomplat']); ?></td>
-                                <td><?php echo htmlspecialchars($com['typecom']); ?></td>
-                                <td><?php echo htmlspecialchars($com['designation'] ?? 'N/A'); ?></td>
-                                <td><?php echo htmlspecialchars($com['datecom']); ?></td>
-                                <td>
-                                    <div class="row-actions-view">
-                                        <a href="test_commande.php?edit_id=<?php echo urlencode($com['idcom']); ?>" class="btn-edit">Modifier</a>
-                                        <a href="delete_commande.php?idcom=<?php echo urlencode($com['idcom']); ?>" class="delete-link">
-                                            <img src="images/trash.png" alt="Supprimer" style="width: 20px !important; height: 20px !important; display: inline-block; vertical-align: middle;">
-                                        </a>
-                                    </div>                                 
-                                </td>
-                            </tr>
-                        <?php endif; ?>
+                                </div>                                 
+                            </td>
+                        </tr>
                     <?php endforeach; ?>
                 <?php else: ?>
-                    <tr><td colspan="7" style="text-align: center; font-weight: bold;">Aucune commande en cours.</td></tr>
+                    <tr><td colspan="8" style="text-align: center; font-weight: bold;">Aucune commande en cours.</td></tr>
                 <?php endif; ?>
             </tbody>
         </table>
